@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
 
-controldir=control
 #==================================
 # Necessary environment variables.
 # Feel free to modify them if you know what you are doing.
 
 
-
 # Uncomment the two lines below to remove RNA folding features and SilVA's
 # dependency on UNAfold/ViennaRNA:
 export EXCLUDE_RNA_FOLDING=1
-controldir=control/no-folding
 if [[ ! -z "${EXCLUDE_RNA_FOLDING:-}" ]]; then
     echo "EXCLUDE_RNA_FOLDING=${EXCLUDE_RNA_FOLDING}... excluding RNA folding features." >&2
 fi
@@ -19,11 +16,11 @@ fi
 # Maximum number of threads to use
 export SILVA_N_THREADS="${SILVA_N_THREADS:-8}"
 # Path to the root of the SilVA directory.
-export SILVA_PATH="${SILVA_PATH:-$(cd -P $(dirname $0); pwd)}"
+export SILVA_PATH="/dupa-filer/talf/silva-pipeline/silva_new/src/"
 # Control dataset to use
-export SILVA_CONTROL="${SILVA_CONTROL:-$SILVA_PATH/$controldir/NA10851}"
+export SILVA_CONTROL="${SILVA_CONTROL:-$SILVA_PATH/control/ALL}"
 # Directory of pre-trained models
-export SILVA_TRAINED="${SILVA_TRAINED:-$SILVA_PATH/$controldir/models}"
+export SILVA_TRAINED="${SILVA_TRAINED:-$SILVA_PATH/control/train}"
 
 # Directory to use for any temporary files. It's recommended that this point
 # to somewhere on the local machine (such as /tmp).
