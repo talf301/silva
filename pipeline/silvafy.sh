@@ -18,11 +18,11 @@ EOF
 if [ $# -ne 2 ]; then
 	usage
 fi
-vcf=`pwd`/$1
-out=`pwd`/$2
+vcf=$1
+out=$2
 max_jobs=50
 split_count=50000
-memory=10g
+memory=25g
 processors=1
 
 function sge_wait {
@@ -35,8 +35,8 @@ function sge_wait {
 		sge_jobs="$(qstat | grep "EZR_" | wc -l)" || true
 	done
 }
-
-logdir=~/sge_logs/silvafy/$2
+outname=`basename $out`
+logdir=~/sge_logs/silvafy/$outname
 mkdir -pv $logdir
 mkdir -pv $out/scripts
 
@@ -72,6 +72,7 @@ set -eu
 set -o pipefail
 
 # Our file is already filtered on AF, so we turn off AF filtering
+source /dupa-filer/talf/silva-pipeline/silva_new/src/init.sh
 export SILVA_AF_MAX=1
 /dupa-filer/talf/silva-pipeline/silva_new/src/silva $outdir $file
 EOF

@@ -19,7 +19,7 @@ function waitfor {
 # $1 is the directory we're waiting on
 	while true; do
 		slept=false
-		for $sub in $1/*_processed; do
+		for sub in $1/*_processed; do
 			if [[ ! -s $sub/0.scored ]]; then
 				sleep 60
 				slept=true
@@ -40,51 +40,28 @@ outdir=`pwd`/$2
 vcfname=`basename "$vcf" .vcf`
 
 mkdir -pv "$outdir"
-
+outname=`basename "$outdir"`
 # Run our preprocessing so we get something we can generate from
 /dupa-filer/talf/silva-pipeline/silva_new/src/preprocess.sh $outdir $vcf
 flt=`basename "$outdir"/*.flt`
 
 mkdir -pv "$outdir"/scripts
-logdir="~/sge_logs/silva_generate/$2"
+logdir=~/sge_logs/silva_generate/"$outname"
 mkdir -pv "$logdir"
 
-script="$outdir/scripts/dispatch_generate.sh"
-cat > "$script" << EOF
-#!/usr/bin/env bash
-#$ -N "generate"
-#$ -pe parallel 1
-#$ -l h_vmem=5g
-#$ -e $logdir
-#$ -e $logdir
-#$ -l hostname="supa*"
-
-source /dupa-filer/talf/silva-pipeline/silva/init.sh
-
-temp=\$TMPDIR/"$vcfname".random
-# Generate random mutations
-/dupa-filer/talf/silva-pipeline/silva_new/src/src/input/synonymous.py generate $outdir/$flt -O /dupa-filer/talf/silva-pipeline/silva_new/src/data/refGene.pkl -G /dupa-filer/talf/silva-pipeline/silva_new/src/data/hg19.2bit --random --match-cpg > $temp
-
-# Two step move for safety
-mv -v \$temp "$outdir"/"$vcfname".random.temp
-mv -v "$outdir"/"$vcfname".random.temp "$outdir"/"$vcfname".random
-EOF
-
-# qsub mutation generation
-if [[ ! -s "$outdir"/"$vcfname".random ]]; then
-	qsub -S /bin/sh $script
-fi
 
 # SILVAFY
-/dupa-filer/talf/silva-pipeline/silva/pipeline/silvafy.sh "$outdir"/"$flt" "$outdir"/original
+/dupa-filer/talf/silva-pipeline/silva_new/src/pipeline/silvafy.sh "$outdir"/"$flt" "$outdir"/original
+
+# Wait for split to happen
+sleep 60 
+
+/dupa-filer/talf/silva-pipeline/silva_new/src/pipeline/silvafy_gen.sh "$outdir"/original "$outdir"/random
 
 # If mutations file doesn't exist, wait 1 minute and then check again
 while [[ ! -s "$outdir"/"$vcfname".random ]]; do
 	sleep 60
 done
-
-# SILVAFY MORE
-/dupa-filer/talf/silva-pipeline/silva/pipeline/silvafy.sh "$outdir"/"$vcfname".random "$outdir"/random
 
 # Wait for both of them to be done
 waitfor "$outdir"/original
@@ -99,7 +76,7 @@ if [[ -s "$outdir"/original_results.txt ]]; then
 		echo "Appending to existing file..."
 	fi
 
-/dupa-filer/talf/silva-pipeline/silva/pipeline/combine_pieces.sh "$outdir"/original "$outdir"/original_results.txt
+/dupa-filer/talf/silva-pipeline/silva_new/src/pipeline/combine_pieces.sh "$outdir"/original "$outdir"/original_results.txt
 
 # Combine outputs
 if [[ -s "$outdir"/random_results.txt ]]; then
@@ -110,6 +87,6 @@ if [[ -s "$outdir"/random_results.txt ]]; then
 		echo "Appending to existing file..."
 	fi
 
-/dupa-filer/talf/silva-pipeline/silva/pipeline/combine_pieces.sh "$outdir"/random "$outdir"/random_results.txt
+/dupa-filer/talf/silva-pipeline/silva_new/src/pipeline/combine_pieces.sh "$outdir"/random "$outdir"/random_results.txt
 
 # Run analysis
