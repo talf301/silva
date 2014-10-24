@@ -37,6 +37,7 @@ for file in $in/*; do
 	fi
 	vcfname=`basename $file`
 	if [[ -s "$out"/"$vcfname".random ]];  then
+		echo "Already generated: $vcfname" >&2 
 		continue
 	fi
 	mkdir -pv $out
@@ -66,22 +67,26 @@ EOF
 qsub -S /bin/sh $gen_script
 done
 # Wait for them all to be done
+slept="true"
 while true; do
-	slept=false
+	slept="false"
 	for file in $in/*; do
 		if [ -d $file ]; then
 			continue
 		fi
 		vcfname=`basename $file`
 		if [[ ! -s "$out"/"$vcfname".random ]]; then
+			echo $vcfname
 			sleep 60 
-			slept=true
+			slept="true"
 			break
 		fi
 	done
-	if [[ ! $slept ]]; then
+	if [ "$slept" = false ]; then
+		echo here2
 		break
 	fi
+	echo here
 done
 
 # Now submit silva jobs
@@ -115,3 +120,5 @@ export SILVA_AF_MAX=1
 /dupa-filer/talf/silva-pipeline/silva_new/src/silva $outdir $file
 EOF
 
+	qsub -S /bin/sh $script
+done

@@ -18,15 +18,15 @@ exit 1
 function waitfor {
 # $1 is the directory we're waiting on
 	while true; do
-		slept=false
+		slept="false"
 		for sub in $1/*_processed; do
 			if [[ ! -s $sub/0.scored ]]; then
 				sleep 60
-				slept=true
+				slept="true"
 				break
 			fi
 		done
-		if [[ ! $slept ]]; then
+		if [[ "$slept" = false ]]; then
 			return
 		fi
 	done
@@ -58,11 +58,6 @@ sleep 60
 
 /dupa-filer/talf/silva-pipeline/silva_new/src/pipeline/silvafy_gen.sh "$outdir"/original "$outdir"/random
 
-# If mutations file doesn't exist, wait 1 minute and then check again
-while [[ ! -s "$outdir"/"$vcfname".random ]]; do
-	sleep 60
-done
-
 # Wait for both of them to be done
 waitfor "$outdir"/original
 waitfor "$outdir"/random
@@ -75,7 +70,7 @@ if [[ -s "$outdir"/original_results.txt ]]; then
 	else
 		echo "Appending to existing file..."
 	fi
-
+fi
 /dupa-filer/talf/silva-pipeline/silva_new/src/pipeline/combine_pieces.sh "$outdir"/original "$outdir"/original_results.txt
 
 # Combine outputs
@@ -86,7 +81,7 @@ if [[ -s "$outdir"/random_results.txt ]]; then
 	else
 		echo "Appending to existing file..."
 	fi
-
+fi
 /dupa-filer/talf/silva-pipeline/silva_new/src/pipeline/combine_pieces.sh "$outdir"/random "$outdir"/random_results.txt
 
 # Run analysis

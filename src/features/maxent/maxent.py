@@ -23,7 +23,7 @@ from subprocess import Popen, PIPE
 assert os.getenv('SILVA_PATH') is not None, \
            "Error: SILVA_PATH is unset."
 sys.path.insert(0, os.path.expandvars("$SILVA_PATH/lib/python"))
-from silva import maybe_gzip_open, print_args, get_genes, COMPLEMENT
+from silva import maybe_gzip_open, print_args, get_genes, COMPLEMENT, get_transcript
 
 MAXENT_PATH = os.path.expandvars('$SILVA_PATH/tools/maxent')
 GOOD_SCORE = 2
@@ -45,20 +45,17 @@ class Seq(object):
         tokens = line.strip().split('\t')
         chrom, pos, ref, alt = tokens[0], tokens[1], tokens[3], tokens[4]
         pos = int(pos)
-        gene, tx_id = tokens[5], tokens[6]
+        gene_id, tx_id = tokens[5], tokens[6]
         
-        txs = []
-        for t in genes[gene]:
-            if t.tx() == tx_id and chrom == t.chrom() and t.start() <= pos <= t.end():
-                txs.append(t)
-
-        assert txs
-        tx = max(txs)
-
+        tx = get_transcript(genes, pos, ref, alt, gene_id, tx_id)
+        assert tx
         if tx.strand() == '-':
             ref, alt = COMPLEMENT[ref], COMPLEMENT[alt]
 
-        pre_left, pre_right = tx.get_exon_bounds(pos)
+        try:
+            pre_left, pre_right = tx.get_exon_bounds(pos)
+        except AssertionError:
+            return
         pre_pos = tx.project_to_premrna(pos)
         head = tx._premrna[pre_left:pre_pos]
         tail = tx._premrna[pre_pos+1:pre_right+1]

@@ -29,8 +29,7 @@ EOF
 if [[ $# -ne 1 ]]; then
     usage
 fi
-outdir="$(cd -P "$1"; pwd)"
-
+outdir=$1
 if [[ ! -e $modeldir/test ]]; then
     echo "Could not find test script: $modeldir/test" >&2
     exit 1
@@ -51,29 +50,30 @@ mkdir -pv $outdir
 ### End of code originally in silva-preprocess ###
 ### Code originally in silva-run is below ###
 
-fltfile="$outdir/$base.flt"
-test -s "$fltfile"
+fltfile="$outdir"/*.flt
+#test -s "$fltfile"
 	
-matfile="$outdir/$base.input"
-test -s "$matfile"
+matfile="$outdir"/*.input
+#test -s "$matfile"
+
 
 for modelfile in $traineddir/*.model; do
-    pushd $modeldir > /dev/null
-    if [[ ! -s $modelfile ]]; then
+		pushd $modeldir > /dev/null
+		if [[ ! -s $modelfile ]]; then
 	echo "Error: could not find saved model: $modelfile" >&2
 	exit 1
-    fi
+		fi
     
-    # Run saved model on MAT file and created score file
-    model=$(basename $modelfile .model)
-    scorefile=$model.scored
-    if [[ ! -s $outdir/$scorefile ]]; then
+		 #Run saved model on MAT file and created score file
+		model=$(basename $modelfile .model)
+		scorefile=$model.scored
+		if [[ ! -s $outdir/$scorefile ]]; then
 	echo "Running model $model..." >&2
 	./test $modelfile $matfile | cut -f 1 > $outdir/.$scorefile \
-	    && mv $outdir/.$scorefile $outdir/$scorefile
+			&& mv $outdir/.$scorefile $outdir/$scorefile
 	test -e $outdir/$scorefile
-    fi
-    popd > /dev/null
+		fi
+		popd > /dev/null
 done
 
 # Print scored examples to stdout
