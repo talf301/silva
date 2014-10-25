@@ -14,7 +14,7 @@ import scipy.stats as st
 from variant import Variant
 
 from argparse import ArgumentParser
-NUM_INTERVALS=33
+NUM_INTERVALS=129
 
 __author__ = 'Tal Friedman (talf301@gmail.com)'
 
@@ -25,7 +25,6 @@ def plot_freq(variants, out):
     plt.scatter(scores, afs)
     plt.xscale('log', nonposy='clip')
     plt.xlim(0.001,1)
-    plt.ylim(-0.01, 0.06)
     plt.show()
     plt.savefig(out + 'freq.png')
     plt.close()
@@ -35,13 +34,26 @@ def plot_freq(variants, out):
     #f.close()
 
 def plot_dists(variants, random, out):
-    #plt.hist([x.score for x in variants if x.score > 0.001], bins=10 ** np.linspace(np.log10(.001), np.log10(1.0), 20), log=True)
+    # Original distributions
+    plot_dist(variants, 0, 1, out + 'original_dist_allfreq.png')
+    plot_dist(random, 0, 1, out + 'random_dist_allfreq.png')
+    # Very rare
+    plot_dist(variants, 0, 0.01, out + 'original_dist_0-0.01freq.png')
+    plot_dist(random, 0, 0.01, out + 'random_dist_0-0.01freq.png')
+    # Medium rare
+    plot_dist(variants, 0.01, 0.05, out + 'original_dist_0.01-0.05freq.png')
+    plot_dist(random, 0.01, 0.05, out + 'random_dist_0.01-0.05freq.png')
+    # Common
+    plot_dist(variants, 0.05, 1, out + 'original_dist_0.05-1freq.png')
+    plot_dist(random, 0.05, 1, out + 'random_dist_0.05-1freq.png')
+
+
+"""Plot a histogram of scores, taking only variants within the given range of AF"""
+def plot_dist(variants, min_freq, max_freq, out):
+    plt.hist([x.score for x in variants if x.af > min_freq and x.af < max_freq], bins=10 ** np.linspace(np.log10(0.001), np.log10(1.0), 20), log=True)
     plt.xscale('log')
-    plt.savefig(out + 'original_dist.png')
-    plt.close()
-    #plt.hist([x.score for x in random if x.score > 0.001], bins=10 ** np.linspace(np.log10(.001), np.log10(1.0), 20), log=True)
-    plt.xscale('log')
-    plt.savefig(out + 'random_dist.png')
+    plt.savefig(out)
+    plt.draw()
     plt.close()
 
 def plot_thresh_dist(variants, random, out):

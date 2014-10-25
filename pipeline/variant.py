@@ -33,16 +33,18 @@ class Variant:
             line = line.split()
             info = line[-1]
             # Grab the Allele count and total from info to calculate AF
+            # Or just grab the actual AF
             try:
-                ac = next(x for x in info.split(';') if x.startswith('AC')).split('=')[1]
-                an = next(x for x in info.split(';') if x.startswith('AN')).split('=')[1]
+                af = next(x for x in info.split(';') if x.startswith('AF')).split('=')[1]
+                #ac = next(x for x in info.split(';') if x.startswith('AC')).split('=')[1]
+                #an = next(x for x in info.split(';') if x.startswith('AN')).split('=')[1]
             except StopIteration:
                 logging.warning("Line without freq info " + info)
                 continue
-            ac = ac.split(',')
-            if len(ac) > 1:
+            af = af.split(',')
+            if len(af) > 1:
                 counter += 1
-            af = float(ac[0])/float(an)
+            af = float(af[0])
             v = Variant(float(line[0]), float(line[1]), line[2], line[3], line[4], line[5],
                     line[6], line[7], line[8], line[9], af, info)
             variants.append(v)
