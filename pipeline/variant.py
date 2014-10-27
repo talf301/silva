@@ -8,7 +8,7 @@ to silva score.
 """
 
 class Variant:
-    def __init__(self, rank, score, clss, gene, tx, chrom, pos, id, ref, alt, af, info):
+    def __init__(self, rank, score, clss, gene, tx, chrom, pos, id, ref, alt, af, info, ac_het, ac_hom, an):
         self.rank = rank
         self.score = score
         self.clss = clss
@@ -21,7 +21,9 @@ class Variant:
         self.alt = alt
         self.af = af
         self.info = info
-
+        self.ac_het = ac_het
+        self.ac_hom = ac_hom
+        self.an = an
     """Load a results file into a list of variants"""
     @staticmethod
     def load_res_file(file):
@@ -36,17 +38,20 @@ class Variant:
             # Or just grab the actual AF
             try:
                 af = next(x for x in info.split(';') if x.startswith('AF')).split('=')[1]
+                ac_adj = next(x for x in info.split(';') if x.startswith('AC_Adj')).split('=')[1]
                 #ac = next(x for x in info.split(';') if x.startswith('AC')).split('=')[1]
-                #an = next(x for x in info.split(';') if x.startswith('AN')).split('=')[1]
+                ac_het = next(x for x in info.split(';') if x.startswith('AC_Hom')).split('=')[1]
+                ac_hom = next(x for x in info.split(';') if x.startswith('AC_Het')).split('=')[1]
+                an = next(x for x in info.split(';') if x.startswith('AN')).split('=')[1]
             except StopIteration:
                 logging.warning("Line without freq info " + info)
                 continue
             af = af.split(',')
             if len(af) > 1:
                 counter += 1
-            af = float(af[0])
+            af = 2 * float(ac_adj) / float(an)
             v = Variant(float(line[0]), float(line[1]), line[2], line[3], line[4], line[5],
-                    line[6], line[7], line[8], line[9], af, info)
+                    line[6], line[7], line[8], line[9], af, info, ac_het, ac_hom, an)
             variants.append(v)
         logging.debug("%d multiple allele lines were ignored." % counter)
         return variants

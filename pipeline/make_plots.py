@@ -11,12 +11,65 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as st
+from scipy.stats import chisqprob
 from variant import Variant
 
 from argparse import ArgumentParser
-NUM_INTERVALS=129
 
 __author__ = 'Tal Friedman (talf301@gmail.com)'
+
+NUM_INTERVALS = 129
+HARMFUL_THRESH = 0.05
+COMMON_THRESH = 0.05
+
+"""Test all common and harmful variants (defined by
+COMMON_THRESH and HARMFUL_THRESH) to see if they
+are in Hardy Weinberg equilibrium. Report the percentage
+of variants which are not and some statistics about it
+to the statistics file.
+"""
+def test_common_harmful(variants, out):
+    # Get common and harmful variants, do tests
+    vars = [x for x in variants if x.score > HARMFUL_THRESH and x.freq > COMMON_THRESH]
+    test_stats = [(x.score, hw_test(x)) for x in vars]
+
+    # Calculate and write the percentage with significant deviations from HW
+    dev = float(sum(1 for _, _, pval in test_stats if pval < 0.05)) / len(vars)
+    with open(out + 'statistics.txt', 'a') as file:
+        file.write("%f%% of common harmful variants show significant deviations from\n"
+                "Hardy-Weinberg equilibrium based on Pearson's chi-square test" % (100 * dev))
+
+    # Plot chi test stat vs. score
+    plt.scatter([score for score,_,_ in test_stats], [chi for _, chi, _ in test_stats])
+    plt.xlabel('Silva Score')
+    plt.ylabel('chi square test statistic')
+    plt.savefig(open + 'chisq_vs_silva.png')
+    plt.clf()
+    
+    # Plot silva score considered vs. % out of HW
+    dens = [sum(1 for score,_,_ in test_stats if score > 0.05 * float(thresh)) for thresh in range(1,20)]
+    nums = [sum(1 for score,_,pval in test_stats if pval < 0.05 and score > 0.05 * float(thresh)) for thresh in range(1,20)]
+    percents = [float(num)/float(den) for num, den in zip(nums, dens)]
+    plt.scatter([0.05 * float(thresh) for thresh in range(1,20)], percents)
+    plt.xlabel('Silva Score cutoff')
+    plt.ylabel('Percentage of common variants deviating from HW')
+    plt.savefig(open + 'percent_vs_silva.png')
+    plt.clf()
+
+"""Calculate chi-square value for Pearson's Chi Square test
+used on hardy weinberg equilibrium
+"""
+def hw_test(variant):
+    p = variant.af
+    q = 1 - p
+    n = variant.an
+    # E contains the expectations for each genotype
+    E = [p*p*n, 2*p*q*n, q*q*n]
+    # O contains the actual values
+    O = [variant.ac_hom, variant.ac_het, variant.an - variant.ac_hom - variant.ac_het]
+    chi = sum(((o - e) ** 2) / e for e,o in zip(E,O)) 
+    pval = chisqprob(chi, 1)
+    return chi, pval
 
 """Plot AF vs. silva score, given a list of variants"""
 def plot_freq(variants, out):
@@ -25,9 +78,8 @@ def plot_freq(variants, out):
     plt.scatter(scores, afs)
     plt.xscale('log', nonposy='clip')
     plt.xlim(0.001,1)
-    plt.show()
     plt.savefig(out + 'freq.png')
-    plt.close()
+    plt.clf()
     #f = open('/dupa-filer/talf/silva-pipeline/test.out', 'w')
     #for a,s in zip(afs, scores):
         #f.write('\t'.join([str(a),str(s)]) + '\n')
@@ -53,8 +105,7 @@ def plot_dist(variants, min_freq, max_freq, out):
     plt.hist([x.score for x in variants if x.af > min_freq and x.af < max_freq], bins=10 ** np.linspace(np.log10(0.001), np.log10(1.0), 20), log=True)
     plt.xscale('log')
     plt.savefig(out)
-    plt.draw()
-    plt.close()
+    plt.clf()
 
 def plot_thresh_dist(variants, random, out):
     path = []
@@ -72,7 +123,7 @@ def plot_thresh_dist(variants, random, out):
     plt.xscale('log')
     plt.xlim(10**-3.1, 10**-0.9)
     plt.savefig(out + 'thresh_dist.png')
-    plt.close()
+    plt.clf()
     # Find the max and print percentage at that point
     pts = [(10 ** (-3 + float(i)/((NUM_INTERVALS-1)/2)), points[i], i) for i in range(NUM_INTERVALS)]
     maxpt, pt, ci = max(pts, key=lambda x: x[1])
@@ -92,9 +143,15 @@ def publish_t_test(variants, random, out):
         file.write("p-value and actual t-score based on Welch's t-test: %.8f, %.3f" % (prob, t))
 
 def script(res1, res2, out, **kwargs):
+    # Clear statistics file
+    with open(out + 'statistics.txt', 'w') as file:
+        file.write("")
+    
+    #Load variants
     variants = Variant.load_res_file(res1)
     rand_variants = Variant.load_res_file(res2)
     logging.info("Finished loading files.")
+
     # We want to:
     # Plot frequency for real variants
     plot_freq(variants, out)
@@ -103,7 +160,7 @@ def script(res1, res2, out, **kwargs):
     # Do a t-test and print the results of it (p-val, t score)
     publish_t_test(variants, rand_variants, out)
     # Do the threshold distance plot
-    # Find the max point in the above plot and get estimated percentage of selection
+    # Find the max point in the plot and get estimated percentage of selection
     plot_thresh_dist(variants, rand_variants, out)
     # Anything else i'd like to add
 
@@ -127,16 +184,3 @@ def main(args = sys.argv[1:]):
 if __name__ == '__main__':
     sys.exit(main())
 
-#if __name__ == '__main__':
-    #variants = Variant.load_res_file('/dupa-filer/talf/silva-pipeline/1000gp_rare_results.txt')
-    #rand_variants = Variant.load_res_file('/dupa-filer/talf/silva-pipeline/silva/new_rand_results.txt')
-    #print sum(v.af < 0.05 for v in variants)
-    #print sum(v.af < 0.05 for v in rand_variants)
-    #print len(variants)
-    #print len(rand_variants)
-    #t,prob = st.ttest_ind([v.score for v in variants if v.af < 0.05], [v.score for v in rand_variants if v.af < 0.05], equal_var = False)
-    #print("%.8f" % prob)
-    #print t
-    #plot_freq(variants)
-    #plot_dists(variants, rand_variants)
-    #plot_thresh_dist(variants, rand_variants)
