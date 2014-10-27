@@ -78,13 +78,11 @@ def plot_freq(variants, out):
     plt.scatter(scores, afs)
     plt.xscale('log', nonposy='clip')
     plt.xlim(0.001,1)
+    plt.xlabel('Silva Score')
+    plt.ylabel('Allele Frequency')
     plt.savefig(out + 'freq.png')
     plt.clf()
-    #f = open('/dupa-filer/talf/silva-pipeline/test.out', 'w')
-    #for a,s in zip(afs, scores):
-        #f.write('\t'.join([str(a),str(s)]) + '\n')
-    #f.close()
-
+    
 def plot_dists(variants, random, out):
     # Original distributions
     plot_dist(variants, 0, 1, out + 'original_dist_allfreq.png')
@@ -107,11 +105,35 @@ def plot_dist(variants, min_freq, max_freq, out):
     plt.savefig(out)
     plt.clf()
 
+def plot_dists_nz(variants, random, out):
+    # Original distributions
+    plot_dist_nz(variants, 0, 1, out + 'original_dist_allfreq_nz.png')
+    plot_dist_nz(random, 0, 1, out + 'random_dist_allfreq_nz.png')
+    # Very rare
+    plot_dist_nz(variants, 0, 0.01, out + 'original_dist_0-0.01freq_nz.png')
+    plot_dist_nz(random, 0, 0.01, out + 'random_dist_0-0.01freq_nz.png')
+    # Medium rare
+    plot_dist_nz(variants, 0.01, 0.05, out + 'original_dist_0.01-0.05freq_nz.png')
+    plot_dist_nz(random, 0.01, 0.05, out + 'random_dist_0.01-0.05freq_nz.png')
+    # Common
+    plot_dist_nz(variants, 0.05, 1, out + 'original_dist_0.05-1freq_nz.png')
+    plot_dist_nz(random, 0.05, 1, out + 'random_dist_0.05-1freq_nz.png')
+
+
+"""Plot a histogram of scores, taking only variants within the given range of AF, and scores above
+some small threshold.
+"""
+def plot_dist_nz(variants, min_freq, max_freq, out):
+    plt.hist([x.score for x in variants if x.af > min_freq and x.af < max_freq and x.score > 0.01], bins=10 ** np.linspace(np.log10(0.001), np.log10(1.0), 20), log=True)
+    plt.xscale('log')
+    plt.savefig(out)
+    plt.clf()
+
 def plot_thresh_dist(variants, random, out):
     path = []
     rand = []
     points = []
-    # go from 10^-3 to 10^-1 by log inc of 10^0.125
+    # go from 10^-3 to 10^-1 by log inc of 10^(2/(number of intervals-1))
     for i in range(NUM_INTERVALS):
         x = 10 ** (-3 + float(i)/((NUM_INTERVALS-1)/2))
         path_count = sum(v.score > x for v in variants)
@@ -122,6 +144,8 @@ def plot_thresh_dist(variants, random, out):
     plt.scatter([10 ** (-3 + float(x)/((NUM_INTERVALS-1)/2)) for x in range(NUM_INTERVALS)], points)
     plt.xscale('log')
     plt.xlim(10**-3.1, 10**-0.9)
+    plt.xlabel('Silva score threshold')
+    plt.ylabel('# more random than real')
     plt.savefig(out + 'thresh_dist.png')
     plt.clf()
     # Find the max and print percentage at that point
@@ -155,13 +179,17 @@ def script(res1, res2, out, **kwargs):
     # We want to:
     # Plot frequency for real variants
     plot_freq(variants, out)
-    # Plot the distribution comparison in a smart way
+    # Plot the various distribution comparisons
     plot_dists(variants, rand_variants, out)
+    # Plot the distribution comparisons ignoring variants with very small scores
+    plot_dists_nz(variants, rand_variants, out)
     # Do a t-test and print the results of it (p-val, t score)
     publish_t_test(variants, rand_variants, out)
     # Do the threshold distance plot
     # Find the max point in the plot and get estimated percentage of selection
     plot_thresh_dist(variants, rand_variants, out)
+    # Do HW stuff
+    test_common_harmful(variants, out)
     # Anything else i'd like to add
 
 def parse_args(args):
